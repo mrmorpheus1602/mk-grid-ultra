@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Painel de Mesas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<style>
+  :root {
+    --bg: #17140f;
+    --panel: #211d16;
+    --border: #3a3327;
+    --text: #f1ece0;
+    --text-dim: #9c9384;
+    --accent: #d9a441;
+    --c-verde: #3fae5a;
+    --c-vermelho: #d7514a;
+    --c-amarelo: #e0b83c;
+    --c-azul: #3f7fae;
+    --c-laranja: #d97a2c;
+    --empty: #2c2720;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 20px 16px 60px;
+  }
+  header {
+    max-width: 720px;
+    margin: 0 auto 22px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+  header h1 {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0;
+  }
+  header .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .header-actions button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .header-actions button:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  #grid {
+    max-width: 720px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 8px;
+  }
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--empty);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    cursor: grab;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .cell:active { cursor: grabbing; }
+  .cell.color-verde   { background: var(--c-verde); border-color: var(--c-verde); }
+  .cell.color-vermelho{ background: var(--c-vermelho); border-color: var(--c-vermelho); }
+  .cell.color-amarelo { background: var(--c-amarelo); border-color: var(--c-amarelo); }
+  .cell.color-azul    { background: var(--c-azul); border-color: var(--c-azul); }
+  .cell.color-laranja { background: var(--c-laranja); border-color: var(--c-laranja); }
+  .cell .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.55;
+    position: absolute;
+    top: 4px;
+    left: 6px;
+  }
+  .cell .time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    opacity: 0.75;
+    position: absolute;
+    bottom: 4px;
+  }
+  .cell.sortable-ghost { opacity: 0.3; }
+  .cell.sortable-chosen { box-shadow: 0 0 0 2px var(--accent); }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,9,6,0.72);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 10;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 18px 18px 26px;
+    max-height: 78vh;
+    overflow-y: auto;
+  }
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .sheet-header h2 {
+    font-size: 16px;
+    margin: 0;
+  }
+  .sheet-header button {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .last-click {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .swatches {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .swatch-item .caption {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    max-width: 50px;
+  }
+  .swatch {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .swatch.active { border-color: var(--text); }
+  .swatch.empty-swatch {
+    background: var(--empty);
+    border: 1px dashed var(--text-dim);
+  }
+  .hist-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .hist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .hist-row .hist-label { margin-bottom: 0; }
+  .hist-row button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .hist-row button:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  .hist-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .hist-item .swap { color: var(--text-dim); }
+  .hist-empty {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Painel de Mesas</h1>
+  <div class="header-actions">
+    <button id="resetBtn">Reset</button>
+  </div>
+</header>
+
+<div id="grid"></div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2 id="sheetTitle">Mesa</h2>
+      <button id="closeSheet">✕</button>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="hist-row">
+      <div class="hist-label">Histórico</div>
+      <button id="clearLogsBtn">Pago</button>
+    </div>
+    <div id="history"></div>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  { id: 'verde',    label: 'Verde',    desc: 'Chegou',   hex: '#3fae5a' },
+  { id: 'amarelo',  label: 'Amarelo',  desc: 'Entradas', hex: '#e0b83c' },
+  { id: 'laranja',  label: 'Laranja',  desc: 'Prato',    hex: '#d97a2c' },
+  { id: 'vermelho', label: 'Vermelho', desc: 'Cafés',    hex: '#d7514a' },
+];
+
+const FIREBASE_URL = 'https://mr-simon-6cc0e-default-rtdb.europe-west1.firebasedatabase.app';
+const BOARD_PATH = `${FIREBASE_URL}/board.json`;
+
+let state = null;
+let activeCellId = null;
+let justDragged = false;
+let suppressNextEvent = false;
+
+function defaultState() {
+  const cells = {};
+  for (let i = 0; i < 50; i++) {
+    cells[i] = { color: null, lastClick: null, history: [] };
+  }
+  return { order: Array.from({length: 50}, (_, i) => i), cells };
+}
+
+function fmtTime(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString('pt-PT', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+async function loadState() {
+  try {
+    const res = await fetch(BOARD_PATH);
+    const data = await res.json();
+    if (data) {
+      state = normalizeState(data);
+      return;
+    }
+  } catch (e) {
+    console.error('Erro ao ler o Firebase', e);
+  }
+  state = defaultState();
+  saveState();
+}
+
+// Firebase devolve arrays "cells" como objeto {"0":..,"1":..}; garante formato consistente.
+function normalizeState(data) {
+  const cells = {};
+  for (let i = 0; i < 50; i++) {
+    cells[i] = (data.cells && data.cells[i]) || { color: null, lastClick: null, history: [] };
+    if (!Array.isArray(cells[i].history)) cells[i].history = Object.values(cells[i].history || {});
+  }
+  const order = Array.isArray(data.order) ? data.order : Object.values(data.order || defaultState().order);
+  return { order, cells };
+}
+
+function saveState() {
+  suppressNextEvent = true;
+  fetch(BOARD_PATH, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(state)
+  }).catch(e => console.error('Erro ao guardar no Firebase', e));
+}
+
+function listenForChanges() {
+  const es = new EventSource(BOARD_PATH);
+  es.addEventListener('put', (e) => {
+    if (suppressNextEvent) { suppressNextEvent = false; return; }
+    const { data } = JSON.parse(e.data);
+    if (!data) return;
+    state = normalizeState(data);
+    renderGrid();
+    if (activeCellId !== null) openSheet(activeCellId);
+  });
+  es.onerror = () => { /* o browser volta a ligar sozinho */ };
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  state.order.forEach(id => {
+    const cellData = state.cells[id];
+    const div = document.createElement('div');
+    div.className = 'cell' + (cellData.color ? ` color-${cellData.color}` : '');
+    div.dataset.id = id;
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = id + 1;
+    div.appendChild(num);
+    div.addEventListener('click', () => {
+      if (justDragged) return;
+      openSheet(id);
+    });
+    grid.appendChild(div);
+  });
+}
+
+function openSheet(id) {
+  activeCellId = id;
+  const cellData = state.cells[id];
+
+  document.getElementById('sheetTitle').textContent = `Mesa nº ${id + 1}`;
+
+  const swatchesEl = document.getElementById('swatches');
+  swatchesEl.innerHTML = '';
+
+  const emptyItem = document.createElement('div');
+  emptyItem.className = 'swatch-item';
+  const emptySwatch = document.createElement('div');
+  emptySwatch.className = 'swatch empty-swatch' + (!cellData.color ? ' active' : '');
+  emptySwatch.addEventListener('click', () => setColor(id, null));
+  const emptyCaption = document.createElement('span');
+  emptyCaption.className = 'caption';
+  emptyCaption.textContent = 'Vazio';
+  emptyItem.appendChild(emptySwatch);
+  emptyItem.appendChild(emptyCaption);
+  swatchesEl.appendChild(emptyItem);
+
+  COLORS.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'swatch-item';
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (cellData.color === c.id ? ' active' : '');
+    sw.style.background = c.hex;
+    sw.addEventListener('click', () => setColor(id, c.id));
+    const caption = document.createElement('span');
+    caption.className = 'caption';
+    caption.textContent = c.desc;
+    item.appendChild(sw);
+    item.appendChild(caption);
+    swatchesEl.appendChild(item);
+  });
+
+  renderHistory(id);
+  document.getElementById('overlay').classList.add('open');
+}
+
+function labelFor(colorId) {
+  if (!colorId) return 'Vazio';
+  return COLORS.find(c => c.id === colorId)?.desc ?? colorId;
+}
+
+function setColor(id, newColor) {
+  const cellData = state.cells[id];
+  const oldColor = cellData.color;
+  if (oldColor === newColor) return;
+  const now = new Date().toISOString();
+  cellData.history.unshift({ time: now, from: oldColor, to: newColor });
+  cellData.color = newColor;
+  cellData.lastClick = now;
+  saveState();
+
+  const cellEl = document.querySelector(`.cell[data-id="${id}"]`);
+  if (cellEl) {
+    cellEl.className = 'cell' + (newColor ? ` color-${newColor}` : '');
+  }
+  openSheet(id);
+}
+
+function renderHistory(id) {
+  const cellData = state.cells[id];
+  const histEl = document.getElementById('history');
+  histEl.innerHTML = '';
+  if (!cellData.history.length) {
+    const p = document.createElement('div');
+    p.className = 'hist-empty';
+    p.textContent = 'Pronto a trabalhar.';
+    histEl.appendChild(p);
+    return;
+  }
+  cellData.history.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'hist-item';
+    const swap = document.createElement('span');
+    swap.className = 'swap';
+    swap.textContent = `${labelFor(h.from)} → ${labelFor(h.to)}`;
+    const time = document.createElement('span');
+    time.textContent = fmtTime(h.time);
+    row.appendChild(swap);
+    row.appendChild(time);
+    histEl.appendChild(row);
+  });
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  activeCellId = null;
+}
+
+function resetAll() {
+  if (!confirm('Repor tudo? Isto apaga cores, ordem e histórico de todas as mesas.')) return;
+  state = defaultState();
+  saveState();
+  closeSheet();
+  renderGrid();
+}
+
+function clearLogs() {
+  if (activeCellId === null) return;
+  const cellData = state.cells[activeCellId];
+  cellData.color = null;
+  cellData.history = [];
+  saveState();
+
+  const cellEl = document.querySelector(`.cell[data-id="${activeCellId}"]`);
+  if (cellEl) cellEl.className = 'cell';
+
+  openSheet(activeCellId);
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+document.getElementById('clearLogsBtn').addEventListener('click', clearLogs);
+document.getElementById('closeSheet').addEventListener('click', closeSheet);
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'overlay') closeSheet();
+});
+
+async function init() {
+  await loadState();
+  renderGrid();
+  listenForChanges();
+
+  const grid = document.getElementById('grid');
+  Sortable.create(grid, {
+    animation: 150,
+    delay: 120,
+    delayOnTouchOnly: true,
+    touchStartThreshold: 5,
+    onStart: () => { justDragged = true; },
+    onEnd: (evt) => {
+      const moved = state.order.splice(evt.oldIndex, 1)[0];
+      state.order.splice(evt.newIndex, 0, moved);
+      saveState();
+      setTimeout(() => { justDragged = false; }, 80);
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
