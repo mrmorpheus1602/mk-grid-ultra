@@ -410,7 +410,7 @@ function setColor(id, newColor) {
   const oldColor = cellData.color;
   if (oldColor === newColor) return;
   const now = new Date().toISOString();
-  cellData.history.unshift({ time: now, from: oldColor, to: newColor });
+  cellData.history.push({ time: now, from: oldColor, to: newColor });
   cellData.color = newColor;
   cellData.lastClick = now;
   saveState();
