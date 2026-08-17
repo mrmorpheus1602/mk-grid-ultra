@@ -414,12 +414,21 @@ function setColor(id, newColor) {
   cellData.color = newColor;
   cellData.lastClick = now;
 
-  // Quando a mesa passa a "Chegou" (verde), salta para a 1ª posição.
-  if (newColor === 'verde') {
+  if (oldColor === null && newColor !== null) {
+    const idx = state.order.indexOf(id);
+    if (idx > -1) state.order.splice(idx, 1);
+    let insertAt = 0;
+    while (insertAt < state.order.length && state.cells[state.order[insertAt]].color !== null) {
+      insertAt++;
+    }
+    state.order.splice(insertAt, 0, id);
+  }
+
+  if (newColor === null) {
     const idx = state.order.indexOf(id);
     if (idx > -1) {
       state.order.splice(idx, 1);
-      state.order.unshift(id);
+      state.order.push(id);
     }
   }
 
@@ -471,11 +480,15 @@ function clearLogs() {
   const cellData = state.cells[activeCellId];
   cellData.color = null;
   cellData.history = [];
+
+  const idx = state.order.indexOf(activeCellId);
+  if (idx > -1) {
+    state.order.splice(idx, 1);
+    state.order.push(activeCellId);
+  }
+
   saveState();
-
-  const cellEl = document.querySelector(`.cell[data-id="${activeCellId}"]`);
-  if (cellEl) cellEl.className = 'cell';
-
+  renderGrid();
   openSheet(activeCellId);
 }
 
