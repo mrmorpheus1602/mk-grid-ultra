@@ -413,12 +413,18 @@ function setColor(id, newColor) {
   cellData.history.push({ time: now, from: oldColor, to: newColor });
   cellData.color = newColor;
   cellData.lastClick = now;
-  saveState();
 
-  const cellEl = document.querySelector(`.cell[data-id="${id}"]`);
-  if (cellEl) {
-    cellEl.className = 'cell' + (newColor ? ` color-${newColor}` : '');
+  // Quando a mesa passa a "Chegou" (verde), salta para a 1ª posição.
+  if (newColor === 'verde') {
+    const idx = state.order.indexOf(id);
+    if (idx > -1) {
+      state.order.splice(idx, 1);
+      state.order.unshift(id);
+    }
   }
+
+  saveState();
+  renderGrid();
   openSheet(id);
 }
 
